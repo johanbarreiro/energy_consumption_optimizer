@@ -1,40 +1,8 @@
-import os
-import pandas as pd
-import re
-import numpy as np
 from IPython.display import display
-
-
-def get_dataframes(directory: str) -> dict:
-    dataframes = {}
-
-    # Debug: Check if the directory exists
-    if not os.path.exists(directory):
-        print(f"The directory '{directory}' does not exist.")
-        return dataframes
-
-    # Debug: Print the directory being processed
-    print(f"Processing directory: {directory}")
-
-    for filename in os.listdir(directory):
-        # Debug: Print each filename being processed
-        print(f"Found file: {filename}")
-
-        if filename.endswith('.csv'):
-            filepath = os.path.join(directory, filename)
-
-            # Debug: Print the full filepath
-            print(f"Reading CSV file: {filepath}")
-
-            df = pd.read_csv(filepath)
-            dataframe_name = os.path.splitext(filename)[0]
-            # Add a column with the dataframe name
-            df['DataFrame Name'] = dataframe_name
-            dataframes[dataframe_name] = df
-
-            print(f'DataFrame for {filename} created from {filepath}.')
-
-    return dataframes
+import pandas as pd
+import numpy as np
+import os
+import re
 
 
 def restructure_dataframes(dict_of_dfs, date_column='Date', verbose=False):
@@ -128,6 +96,88 @@ def column_presence_checker(dict_of_dfs):
     return summary_df
 
 
+def preview_dict_of_dfs(dict_of_dfs, n=5):
+    """
+    Previews the first n rows of each DataFrame in the dictionary.
+
+    Parameters:
+    dfs_dict (dict): Dictionary of DataFrames.
+    n (int): Number of rows to preview from each DataFrame.
+
+    Returns:
+    None
+    """
+    for key, df in dict_of_dfs.items():
+        print(f"Preview of DataFrame for {key}:")
+        display(df.head(n))
+        print("\n")
+
+
+def aggregate_dataframes(dict_of_dfs, date_column='Date', output_grain='hour', input_grain='minute'):
+    """
+    Aggregates data from the specified input grain to the specified output grain.
+
+    Parameters:
+    dict_of_dfs (dict): Dictionary of DataFrames.
+    date_column (str): The name of the date column in the DataFrames.
+    output_grain (str): The time grain for aggregation ('hour', 'day', 'month'). Default is 'hour'.
+    input_grain (str): The grain of the input data ('minute', 'hour', 'day'). Default is 'minute'.
+
+    Returns:
+    dict: Dictionary of aggregated DataFrames.
+    """
+    # Define resampling rules for input and output grains
+    input_grain_rule = {
+        'minute': 'T',
+        'hour': 'H',
+        'day': 'D'
+    }
+    
+    resample_rule = {
+        'hour': 'H',
+        'day': 'D',
+        'month': 'M'
+    }
+
+    if input_grain not in input_grain_rule:
+        raise ValueError(
+            f"Invalid input grain: {input_grain}. Must be one of {list(input_grain_rule.keys())}")
+    
+    if output_grain not in resample_rule:
+        raise ValueError(
+            f"Invalid output grain: {output_grain}. Must be one of {list(resample_rule.keys())}")
+
+    # Define custom aggregation functions
+    def custom_agg_func(column):
+        if 'kWh' in column:
+            return 'sum'
+        elif any(unit in column for unit in ['lux', 'degC', 'RH%']):
+            return 'mean'
+        else:
+            return 'first'
+
+    # Resample each DataFrame
+    aggregated_dfs = {}
+    for name, df in dict_of_dfs.items():
+        # Ensure the date column is datetime type and set as index for resampling
+        df[date_column] = pd.to_datetime(df[date_column])
+        df.set_index(date_column, inplace=True)
+
+        # Define aggregation dictionary for all columns
+        agg_dict = {col: custom_agg_func(col) for col in df.columns}
+
+        # Resample and aggregate
+        resampled_df = df.resample(resample_rule[output_grain]).agg(agg_dict)
+
+        # Reset the index to move the date column back to a column
+        resampled_df.reset_index(inplace=True)
+
+        aggregated_dfs[name] = resampled_df
+
+    return aggregated_dfs
+
+
+
 def convert_date_columns(dict_of_dfs, date_column, verbose=False):
     """
     Converts the specified date column to datetime in each DataFrame in the dictionary.
@@ -193,47 +243,6 @@ def transform_date_features_dict(dict_of_dfs, date_column):
     return transformed_dict_of_dfs
 
 
-def aggregate_data(dict_of_dfs, date_column, time_grain):
-    """
-    Aggregates data from minute granularity to the specified time grain.
-
-    Parameters:
-    dict_of_dfs (dict): Dictionary of DataFrames with minute granularity.
-    date_column (str): The name of the date column in the DataFrames.
-    time_grain (str): The time grain for aggregation ('hour', 'day', 'month').
-
-    Returns:
-    dict: Dictionary of aggregated DataFrames.
-    """
-    # Define resampling rules
-    resample_rule = {
-        'hour': 'H',
-        'day': 'D',
-        'month': 'M'
-    }
-
-    if time_grain not in resample_rule:
-        raise ValueError(
-            f"Invalid time grain: {time_grain}. Must be one of {list(resample_rule.keys())}")
-
-    # Resample each DataFrame
-    aggregated_dfs = {}
-    for name, df in dict_of_dfs.items():
-        # Ensure the date column is datetime type and set as index for resampling
-        df[date_column] = pd.to_datetime(df[date_column])
-        df.set_index(date_column, inplace=True)
-
-        # Resample and aggregate using the mean
-        resampled_df = df.resample(resample_rule[time_grain]).mean()
-
-        # Reset the index to move the date column back to a column
-        resampled_df.reset_index(inplace=True)
-
-        aggregated_dfs[name] = resampled_df
-
-    return aggregated_dfs
-
-
 def nan_checker(dict_of_dfs):
     all_columns = set()
     for df in dict_of_dfs.values():
@@ -265,6 +274,50 @@ def nan_checker(dict_of_dfs):
 
     # Display the summary dataframe
     return summary_df
+
+
+def add_total_consumption_columns(dict_of_dfs, verbose=False):
+    """
+    Adds total consumption columns (total_consumption(kW) and total consumption by zone) to each DataFrame in the dictionary.
+
+    Parameters:
+    dict_of_dfs (dict): Dictionary of DataFrames to add the total consumption columns.
+    verbose (bool): If True, print detailed information about the operations. Default is False.
+
+    Returns:
+    dict: Dictionary of DataFrames with the total consumption columns added.
+    """
+    zone_pattern = re.compile(r'(z\d+)_.*\(kW\)')
+
+    for name, df in dict_of_dfs.items():
+        # Identify columns with 'kW' in their name
+        kw_columns = [col for col in df.columns if 'kW' in col]
+
+        # Calculate the total consumption, treating NaNs as zeros
+        df['total_consumption(kW)'] = df[kw_columns].fillna(0).sum(axis=1)
+
+        # Identify zones and calculate total consumption for each zone
+        zones = {}
+        for col in kw_columns:
+            match = zone_pattern.match(col)
+            if match:
+                zone = match.group(1)
+                if zone not in zones:
+                    zones[zone] = []
+                zones[zone].append(col)
+
+        for zone, columns in zones.items():
+            df[f'{zone}_total_consumption(kW)'] = df[columns].fillna(
+                0).sum(axis=1)
+
+        # Update the dataframe in the dictionary
+        dict_of_dfs[name] = df
+
+        if verbose:
+            print(
+                f"DataFrame: {name} - Added total_consumption(kW) and zone-specific total consumption columns")
+
+    return dict_of_dfs
 
 
 def convert_kw_to_kwh(dict_of_dfs, grain='minute'):
@@ -309,33 +362,6 @@ def convert_kw_to_kwh(dict_of_dfs, grain='minute'):
         converted_dfs[name] = df_converted
 
     return converted_dfs
-
-
-def add_total_consumption_column(dict_of_dfs, verbose=False):
-    """
-    Adds a total consumption column (total_consumption(kW)) to each DataFrame in the dictionary.
-
-    Parameters:
-    dict_of_dfs (dict): Dictionary of DataFrames to add the total consumption column.
-    verbose (bool): If True, print detailed information about the operations. Default is False.
-
-    Returns:
-    dict: Dictionary of DataFrames with the total consumption column added.
-    """
-    for name, df in dict_of_dfs.items():
-        # Identify columns with 'kW' in their name
-        kw_columns = [col for col in df.columns if 'kW' in col]
-
-        # Calculate the total consumption, treating NaNs as zeros
-        df['total_consumption(kW)'] = df[kw_columns].fillna(0).sum(axis=1)
-
-        # Update the dataframe in the dictionary
-        dict_of_dfs[name] = df
-
-        if verbose:
-            print(f"DataFrame: {name} - Added total_consumption(kW) column")
-
-    return dict_of_dfs
 
 
 def add_kwh_column(dict_of_dfs, time_grain, date_column, verbose=False):
@@ -457,54 +483,32 @@ def merge_datasets_by_floor(dict_of_dfs):
 
     return merged_dfs
 
-
-def preview_dict_of_dfs(dict_of_dfs, n=5):
+def calculate_total_ac_consumption_by_zone(dict_of_dfs):
     """
-    Previews the first n rows of each DataFrame in the dictionary.
+    Calculate total AC consumption by zone for each DataFrame in the dictionary.
 
     Parameters:
-    dfs_dict (dict): Dictionary of DataFrames.
-    n (int): Number of rows to preview from each DataFrame.
+    dict_of_dfs (dict): Dictionary of DataFrames with AC consumption data.
 
     Returns:
-    None
+    dict: Dictionary of DataFrames with total AC consumption by zone added.
     """
-    for key, df in dict_of_dfs.items():
-        print(f"Preview of DataFrame for {key}:")
-        display(df.head(n))
-        print("\n")
-
-def collect_columns_by_unit(dict_of_dfs):
-    """
-    Collects column names by unit of measurement for each DataFrame in the dictionary.
-
-    Parameters:
-    dict_of_dfs (dict): Dictionary of DataFrames to analyze.
-
-    Returns:
-    dict: A dictionary of dictionaries with stored lists of column names according to unit.
-    """
-    units = {
-        'energy': '(kWh)',
-        'power': '(kW)',
-        'temperature': '(degC)',
-        'relative humidity': '(RH%)',
-        'ambient lighting': '(lux)'
-    }
-
-    collected_columns = {}
+    ac_zone_pattern = re.compile(r'(z\d+).*AC')
 
     for name, df in dict_of_dfs.items():
-        collected_columns[name] = {
-            'energy': [],
-            'power': [],
-            'temperature': [],
-            'relative humidity': [],
-            'ambient lighting': []
-        }
+        # Find all columns that match the pattern
+        ac_columns = [col for col in df.columns if ac_zone_pattern.search(col)]
         
-        for unit, indicator in units.items():
-            columns = [col for col in df.columns if indicator in col]
-            collected_columns[name][unit].extend(columns)
+        # Extract unique zones from the column names
+        zones = set(ac_zone_pattern.search(col).group(1) for col in ac_columns if ac_zone_pattern.search(col))
 
-    return collected_columns
+        for zone in zones:
+            # Find all columns for the current zone
+            zone_columns = [col for col in ac_columns if zone in col]
+            if zone_columns:  # Only add the total column if there are relevant columns
+                # Calculate the total consumption for the current zone
+                df[f'{zone}_total_AC_consumption(kW)'] = df[zone_columns].sum(axis=1)
+
+        dict_of_dfs[name] = df
+
+    return dict_of_dfs
