@@ -1,0 +1,7 @@
+ipython
+numpy
+OMIEData
+pandas
+Requests
+scipy
+sympy
