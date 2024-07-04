@@ -225,3 +225,42 @@ def calculate_total_ac_consumption_by_zone(dict_of_dfs):
         dict_of_dfs[name] = df
 
     return dict_of_dfs
+
+def check_if_total_active_energy(df, suspect_column, energy_columns, verbose=False):
+    """
+    Check if the suspect column represents the total active energy by comparing it with the sum of other energy columns.
+
+    Parameters:
+    - df (pandas.DataFrame): The DataFrame containing the columns.
+    - suspect_column (str): The name of the suspect total active energy column.
+    - energy_columns (list of str): A list of column names representing individual energy usage.
+    - verbose (bool): If True, print detailed comparison results.
+
+    Returns:
+    - bool: True if the suspect column matches the sum of other energy columns, False otherwise.
+    """
+
+    # Check if the suspect column and all energy columns exist in the DataFrame
+    missing_columns = [col for col in [suspect_column] + energy_columns if col not in df.columns]
+    if missing_columns:
+        raise KeyError(f"Columns not found in the DataFrame: {missing_columns}")
+
+    # Sum the individual energy columns
+    df['Sum_Energy_Columns'] = df[energy_columns].sum(axis=1)
+
+    # Compare the suspect column with the sum of other energy columns
+    columns_match = df[suspect_column].equals(df['Sum_Energy_Columns'])
+
+    if verbose:
+        if columns_match:
+            print(f"The suspect column '{suspect_column}' matches the sum of the energy columns: {energy_columns}.")
+        else:
+            print(f"The suspect column '{suspect_column}' does not match the sum of the energy columns: {energy_columns}.")
+            # Provide additional info on mismatched rows
+            mismatched_rows = df[df[suspect_column] != df['Sum_Energy_Columns']]
+            print(f"Mismatched rows:\n{mismatched_rows[[suspect_column] + ['Sum_Energy_Columns']].head()}")
+
+    # Drop the temporary sum column
+    df.drop(columns=['Sum_Energy_Columns'], inplace=True)
+
+    return columns_match
