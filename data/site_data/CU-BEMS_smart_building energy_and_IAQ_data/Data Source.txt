@@ -14,4 +14,4 @@ total_energy_consumption_kwh = (
     num_ssds * power_consumption_per_15_min['ssd'] / 1000
 ) 
 
-i have the field 07 Data Center_Electric_Active Power (kW) which is total energy consumption. synthesize data values for each variable except consumption. satisfy the equation so that the synthesized values when the values are plugged into the equation they equal the values in the csv
+i have the field 07 Data Center_Electric_Active Power (kW) which is total energy consumption. synthesize data values for each variable except consumption. satisfy the equation so that when the synthesized values are plugged into the equation they equal the 07 Data Center_Electric_Active Power (kW) values in the csv
