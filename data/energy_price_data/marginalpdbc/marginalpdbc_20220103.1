@@ -1,0 +1,18 @@
+Servers
+Average annual power may be around 1,800 to 1,900 kWh every year per server (divide by 365 then 24 the 4) 0.05279680365 kWh per 15 minutes
+
+Network Switch
+However, as a general estimate, a non-PoE 24 port switch may consume around 20-50 watts of power, while a PoE-enabled switch may consume around 100-250 watts or more, depending on the power requirements of the connected devices. PoE: 25Wh - 62.5Wh per 15 minutes Non-PoE: 5Wh - 12.5Wh per 15 minutes
+
+HDD & SDD 
+Depending on disk size, an HDD can use anywhere from 6 to 9 watts at maximum capacity. While this is lower than in previous years, power requirements for SSDs have remained mostly constant at around 6 watts per disk.
+HDD: 0.175Wh - 0.2625Wh per 15 minutes SSD: 0.175Wh per 15 minutes
+
+The grain of the data is 15 minute intervals
+equation:
+
+total_data_center_consumption_kwh = β1*Number_of_active_servers + β2*Number_of_active_network_switches + β3*Number_of_active_hard_drives
+
+----------------------------------------------------------------------------------------
+
+total_consumption_chiller_group = β1*number_active_chillers + β2*outdoor_temperature + β3*outdoor_humidity + β4*Chiller Set point + β5*Chiller Efficiency

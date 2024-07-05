@@ -1,0 +1,17 @@
+energy_consumption_per_15_min = {
+    'server': 0.05279680365,  # kWh per 15 minutes
+    'network_switch_poe': (25, 62.5),  # Wh per 15 minutes
+    'network_switch_non_poe': (5, 12.5),  # Wh per 15 minutes
+    'hdd': (0.175, 0.2625),  # Wh per 15 minutes
+    'ssd': 0.175  # Wh per 15 minutes
+}
+
+total_energy_consumption_kwh = (
+    num_servers * power_consumption_per_15_min['server'] +
+    num_network_switches_poe * np.random.uniform(power_consumption_per_15_min['network_switch_poe'][0], power_consumption_per_15_min['network_switch_poe'][1], num_records) / 1000 +
+    num_network_switches_non_poe * np.random.uniform(power_consumption_per_15_min['network_switch_non_poe'][0], power_consumption_per_15_min['network_switch_non_poe'][1], num_records) / 1000 +
+    num_hdds * np.random.uniform(power_consumption_per_15_min['hdd'][0], power_consumption_per_15_min['hdd'][1], num_records) / 1000 +
+    num_ssds * power_consumption_per_15_min['ssd'] / 1000
+) 
+
+i have the field 07 Data Center_Electric_Active Power (kW) which is total energy consumption. synthesize data values for each variable except consumption. satisfy the equation so that when the synthesized values are plugged into the equation they equal the 07 Data Center_Electric_Active Power (kW) values in the csv
