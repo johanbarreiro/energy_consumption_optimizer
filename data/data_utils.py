@@ -548,7 +548,7 @@ def add_energy_cost_column(dict_of_dfs, price_col_mwh, sum_col_kwh):
     for key, df in dict_of_dfs.items():
         if sum_col_kwh in df.columns and price_col_mwh in df.columns:
             # Calculate the energy cost in kWh
-            df['energy_cost_kWh'] = df[sum_col_kwh] * (df[price_col_mwh] / 1000)
+            df['energy_cost'] = df[sum_col_kwh] * (df[price_col_mwh] / 1000)
 
             # Update the dictionary with the modified dataframe
             dict_of_dfs[key] = df
