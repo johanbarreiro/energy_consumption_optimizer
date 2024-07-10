@@ -498,6 +498,8 @@ def aggregate_to_hourly(dict_of_dfs, datetime_column=None, verbose=False):
         for col in numerical_cols:
             if '(kWh)' in col:
                 agg_dict[col] = 'sum'
+            elif '_kWh' in col:
+                agg_dict[col] = 'sum'
             elif '(kW)' in col:
                 agg_dict[col] = 'mean'
             elif '(kVa)' in col:
