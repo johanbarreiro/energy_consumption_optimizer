@@ -26,6 +26,9 @@ Our optimization algorithm demonstrated significant cost savings. For instance, 
 ## Future Development
 Future improvements for Electritect include exploring advanced optimization techniques, standardizing implementation processes, and expanding to optimize other energy sources like natural gas and water systems. Additionally, partnerships with established IoT suppliers will enhance data collection and scalability.
 
+## Flow Chart
+![Swimlane Diagram](https://github.com/johanbarreiro/vl_optimizer/blob/main/documents/Swimlane%20Diagram(2).jpg)
+
 ## References
 For a detailed list of references, please refer to the project's documentation.
 
